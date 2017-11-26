@@ -1,0 +1,9 @@
+var config = {
+  length: 6,
+  dbFile: './db.sqlite3',
+  expressProxy: 5, // Read more here: https://expressjs.com/en/guide/behind-proxies.html
+  morganLogFormat: 'combined', // Read more here: https://www.npmjs.com/package/morgan#predefined-formats
+  token: '' // The token used to add new short URLs
+};
+
+module.exports = config;
