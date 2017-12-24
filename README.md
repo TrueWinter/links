@@ -1,5 +1,6 @@
 # NdT3Links
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/93d38fa6f2e1464ba59aa001882210b3)](https://www.codacy.com/app/NdT3Development/NdT3Links?utm_source=github.com&utm_medium=referral&utm_content=NdT3Development/NdT3Links&utm_campaign=badger)
 [![Known Vulnerabilities](https://snyk.io/test/github/ndt3development/ndt3links/badge.svg)](https://snyk.io/test/github/ndt3development/ndt3links)
 
 This is a simple URL shortener made by NdT3Development using NodeJS and Sqlite3 as the database.
