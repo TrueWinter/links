@@ -1,5 +1,7 @@
 # NdT3Links
 
+[![Known Vulnerabilities](https://snyk.io/test/github/ndt3development/ndt3links/badge.svg)](https://snyk.io/test/github/ndt3development/ndt3links)
+
 This is a simple URL shortener made by NdT3Development using NodeJS and Sqlite3 as the database.
 
 ## How it Works
