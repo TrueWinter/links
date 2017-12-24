@@ -1,6 +1,6 @@
 {
   "name": "ndt3links",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "A simple NodeJS URL shortener",
   "main": "server.js",
   "scripts": {

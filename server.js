@@ -47,7 +47,10 @@ db.serialize(function() {
 app.get('/:id', function (req, res) {
 	if (req.params.id === 'favicon.ico' || req.params.id === 'robots.txt') return;
 	//console.log(req.params.id);
-	var selectURL = knex.select('url').from('links').where('id', req.params.id).toString();
+	var selectURL = knex.select('url')
+		.from('links')
+		.where('id', req.params.id)
+		.toString();
 	//console.log(selectURL);
 	db.serialize(function() {
 		db.all(selectURL, function (err, rows) {
@@ -77,7 +80,7 @@ app.post('/new', function (req, res) {
 	if (!req.body.url) {
 		return res.status(400).json({ success: false, error: 'URL required' });
 	}
-	var regex = new RegExp('^(http[s]?:\\/\\/(www\\.)?|ftp:\\/\\/(www\\.)?|www\\.){1}([0-9A-Za-z-\\.@:%_\+~#=]+)+((\\.[a-zA-Z]{2,3})+)(/(.)*)?(\\?(.)*)?');
+	var regex = new RegExp('^(http[s]?:\\/\\/(www\\.)?|ftp:\\/\\/(www\\.)?|www\\.){1}([0-9A-Za-z-\\.@:%_\+~#=]+)+((\\.[a-zA-Z]{2,3})+)(/(.)*)?(\\?(.)*)?'); // eslint-disable-line no-useless-escape
 
 	if (!regex.test(req.body.url)) {
 		return res.status(400).json({ success: false, error: 'Not a valid URL' });
@@ -85,14 +88,14 @@ app.post('/new', function (req, res) {
 
 
 	function randomValueHex (length) {
-		return crypto.randomBytes(Math.ceil(length/2))
+		return crypto.randomBytes(Math.ceil(length / 2))
 			.toString('hex') // convert to hexadecimal format
-			.slice(0,length);	 // return required number of characters
+			.slice(0, length);	 // return required number of characters
 	}
 	var random = randomValueHex(config.length);
 
 	function insert() {
-		var q = knex('links').insert({url: req.body.url, id: random}).toString();
+		var q = knex('links').insert({ url: req.body.url, id: random }).toString();
 		//console.log(q);
 		db.serialize(function() {
 			db.run(q, function (err) {
@@ -127,7 +130,7 @@ app.post('/new', function (req, res) {
 	});
 });
 
-app.get('/onlinecheck', function (req, res) { 
+app.get('/onlinecheck', function (req, res) {
 	/*
 	Use this for app/uptime monitoring.
 	It will return a 200 instead of other codes which may 
