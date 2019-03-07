@@ -45,7 +45,7 @@ db.serialize(function() {
 });
 
 app.get('/:id', function (req, res) {
-	if (req.params.id === 'favicon.ico' || req.params.id === 'robots.txt') return;
+	if (req.params.id === 'favicon.ico' || req.params.id === 'robots.txt') return res.status(404).end();
 	//console.log(req.params.id);
 	var selectURL = knex.select('url')
 		.from('links')
