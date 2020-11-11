@@ -1,7 +1,6 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 var crypto = require('crypto');
-var url = require('url');
 var path = require('path');
 var morgan = require('morgan');
 var app = express();
@@ -23,9 +22,6 @@ app.use(bodyParser.json());
 app.set('trust proxy', config.expressProxy);
 
 app.use(morgan('combined'));
-
-var sqlite3 = require('sqlite3').verbose();
-var db = new sqlite3.Database(config.dbFile);
 
 var knex = require('knex')({
 	client: 'sqlite3',
@@ -95,56 +91,23 @@ app.post('/new', function (req, res) {
 		}
 	});
 
-		/*var q = knex('links').insert({ url: req.body.url, id: random }).toString();
-		//console.log(q);
-		db.serialize(function() {
-			db.run(q, function (err) {
-				if (err) {
-					res.status(500).json({ success: false, error: 'Error in inserting values to database' });
-					return console.log(err);
-				}
-
-				console.log(`Inserted ID ${random} into database`);
-				res.json({ success: true, URL: req.body.url, ID: random });
-			});
-		});*/
-
 	knex('links').insert({
 		shortid: req.body.shortid ? req.body.shortid : random,
 		url: req.body.url,
 		clicks: 0
-	}).then(function(data) {
+	}).then(function() {
 		res.end(`${req.body.url} shortened to https://${config.domain}/${req.body.shortid ? req.body.shortid : random}`);
 	}).catch(function(e) {
 		res.status(500).end(`Unable to insert short URL into databse: ${e}`);
 		throw new Error(`Unable to insert short URL into databse: ${e}`);
 	});
 
-	/*var check = knex.select('url')
-		.from('links')
-		.where('id', random)
-		.toString();
-	//console.log(check);
-	db.serialize(function() {
-		db.all(check, function (err, rows) {
-			if (err) {
-				res.json({ success: false, error: 'Error in checking for duplicate ID' });
-				console.log(err);
-			} else {
-				var name = rows[0];
-				if (!name) {
-					insert();
-				}
-			}
-		});
-	});*/
-
 });
 
 app.get('/onlinecheck', function (req, res) {
 	/*
 	Use this for app/uptime monitoring.
-	It will return a 200 instead of other codes which may 
+	It will return a 200 instead of other codes which may
 	result in an offline status in some monitoring programs
 	*/
 	res.status(200).end('OK');
@@ -217,22 +180,6 @@ app.get('/:id', function (req, res) {
 		res.status(500).end(`Error querying database: ${e}`);
 		throw new Error(`Error querying database: ${e}`);
 	});
-
-	//console.log(selectURL);
-	/*db.serialize(function() {
-		db.all(selectURL, function (err, rows) {
-			if (err) {
-				console.log(err);
-			} else {
-				url = rows[0];
-				if (url) {
-					res.redirect(url.url);
-				} else {
-					res.status(400).json({ success: false, error: 'ID not found in database' });
-				}
-			}
-		});
-	});*/
 });
 
 var listener = app.listen(config.port, function () {
