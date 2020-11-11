@@ -8,10 +8,13 @@ A `config.js` file is used to configure this software. Below is an example confi
 
 ```js
 var config = {
-  length: 6,
-  dbFile: './db.sqlite3',
-  expressProxy: '127.0.0.1',
-  password: 'password'
+	length: 6,
+	dbFile: './db.sqlite3',
+	expressProxy: '127.0.0.1',
+	password: 'password',
+  	port: '19282',
+	domain: 'short.url',
+	homeRedirect: 'https://example.com'
 };
 
 module.exports = config;
