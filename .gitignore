@@ -1,6 +1,3 @@
 node_modules
-watch.json
-.gitconfig
 db.sqlite3
 config.js
-.config

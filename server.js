@@ -81,7 +81,7 @@ app.post('/new', function (req, res) {
 	var random = randomValueHex();
 
 	knex('links').select('shortid').where({
-		id: req.body.shortid ? req.body.shortid : random
+		shortid: req.body.shortid ? req.body.shortid : random
 	}).then(function(data) {
 		if (data.length !== 0) {
 			if (req.body.shortid) {
@@ -89,17 +89,17 @@ app.post('/new', function (req, res) {
 			}
 			return res.status(500).end('Failed to generate unique short ID');
 		}
-	});
 
-	knex('links').insert({
-		shortid: req.body.shortid ? req.body.shortid : random,
-		url: req.body.url,
-		clicks: 0
-	}).then(function() {
-		res.end(`${req.body.url} shortened to https://${config.domain}/${req.body.shortid ? req.body.shortid : random}`);
-	}).catch(function(e) {
-		res.status(500).end(`Unable to insert short URL into databse: ${e}`);
-		throw new Error(`Unable to insert short URL into databse: ${e}`);
+		knex('links').insert({
+			shortid: req.body.shortid ? req.body.shortid : random,
+			url: req.body.url,
+			clicks: 0
+		}).then(function() {
+			res.end(`${req.body.url} shortened to https://${config.domain}/${req.body.shortid ? req.body.shortid : random}`);
+		}).catch(function(e) {
+			res.status(500).end(`Unable to insert short URL into databse: ${e}`);
+			throw new Error(`Unable to insert short URL into databse: ${e}`);
+		});
 	});
 
 });
