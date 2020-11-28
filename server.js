@@ -55,7 +55,7 @@ app.get('/new', function(req, res) {
 app.post('/new', function (req, res) {
 
 	if (!req.body.password) {
-		return res.status(403).end('No token provided');
+		return res.status(403).end('No password provided');
 	}
 	if (req.body.password !== config.password) {
 		return res.status(401).end('Password incorrect');
