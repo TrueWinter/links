@@ -3,15 +3,10 @@ var bodyParser = require('body-parser');
 var crypto = require('crypto');
 var path = require('path');
 var morgan = require('morgan');
+
 var app = express();
 
-try {
-	var config = require('./config.js');
-} catch (e) {
-	var eCode = e.code ? e.code : 'NO ERROR CODE';
-	console.error(`Unable to load config file. Error code: ${eCode}`);
-	process.exit(1);
-}
+var config = require('./config.js');
 
 app.use(bodyParser.urlencoded({
 	extended: true
@@ -48,12 +43,18 @@ knex.schema.hasTable('links').then(function(exists) {
 	throw new Error(`Unable to create table: ${e}`);
 });
 
+app.locals.db = knex;
+app.locals.config = config;
+
+if (config.customLogic) {
+	require(path.join(__dirname, config.customLogic))(app);
+}
+
 app.get('/new', function(req, res) {
 	res.sendFile(path.join(__dirname, 'new.html'));
 });
 
 app.post('/new', function (req, res) {
-
 	if (!req.body.password) {
 		return res.status(403).end('No password provided');
 	}
@@ -101,7 +102,6 @@ app.post('/new', function (req, res) {
 			throw new Error(`Unable to insert short URL into databse: ${e}`);
 		});
 	});
-
 });
 
 app.get('/onlinecheck', function (req, res) {
@@ -179,6 +179,129 @@ app.get('/:id', function (req, res) {
 	}).catch(function(e) {
 		res.status(500).end(`Error querying database: ${e}`);
 		throw new Error(`Error querying database: ${e}`);
+	});
+});
+
+app.get('/api/links', function(req, res) {
+	if (!req.get('password')) {
+		return res.status(403).json({ success: false, message: 'No password provided' });
+	}
+
+	if (req.get('password') !== config.password) {
+		return res.status(401).json({ success: false, message: 'Password incorrect' });
+	}
+
+	knex('links').select('shortid', 'url').then(function(data) {
+		return res.json(data);
+	}).catch(function(e) {
+		res.status(500).json({ success: false, message: `Error querying database: ${e}` });
+		throw new Error(`Error querying database: ${e}`);
+	});
+});
+
+app.get('/api/links/:id', function(req, res) {
+	if (!req.get('password')) {
+		return res.status(403).json({ success: false, message: 'No password provided' });
+	}
+
+	if (req.get('password') !== config.password) {
+		return res.status(401).json({ success: false, message: 'Password incorrect' });
+	}
+
+	knex('links').select('*').where({
+		shortid: req.params.id
+	}).then(function(data) {
+		if (data.length === 0) {
+			return res.status(404).json({ success: false, message: 'ID not found in database' });
+		}
+
+		return res.json(data[0]);
+	}).catch(function(e) {
+		res.status(500).json({ success: false, message: `Error querying database: ${e}` });
+		throw new Error(`Error querying database: ${e}`);
+	});
+});
+
+app.post('/api/links/add', function(req, res) {
+	if (!req.get('password')) {
+		return res.status(403).json({ success: false, message: 'No password provided' });
+	}
+
+	if (req.get('password') !== config.password) {
+		return res.status(401).json({ success: false, message: 'Password incorrect' });
+	}
+
+	if (!req.body.url) {
+		return res.status(400).json({ success: false, error: 'URL required' });
+	}
+
+	var regex = new RegExp('^(http[s]?:\\/\\/(www\\.)?|ftp:\\/\\/(www\\.)?|www\\.){1}([0-9A-Za-z-\\.@:%_\+~#=]+)+((\\.[a-zA-Z]{2,3})+)(/(.)*)?(\\?(.)*)?'); // eslint-disable-line no-useless-escape
+
+	if (!regex.test(req.body.url)) {
+		return res.status(400).json({ success: false, message: 'Not a valid URL' });
+	}
+
+	function randomValueHex () {
+		var length = config.length;
+		return crypto.randomBytes(Math.ceil(length / 2))
+			.toString('hex') // convert to hexadecimal format
+			.slice(0, length);	 // return required number of characters
+	}
+
+	var random = randomValueHex();
+
+	knex('links').select('shortid').where({
+		shortid: req.body.shortid ? req.body.shortid : random
+	}).then(function(data) {
+		if (data.length !== 0) {
+			if (req.body.shortid) {
+				return res.status(500).end('Short ID is not unique');
+			}
+			return res.status(500).end('Failed to generate unique short ID');
+		}
+
+		knex('links').insert({
+			shortid: req.body.shortid ? req.body.shortid : random,
+			url: req.body.url,
+			clicks: 0
+		}).then(function() {
+			res.json({ success: true, longURL: req.body.url, shortid: req.body.shortid ? req.body.shortid : random });
+		}).catch(function(e) {
+			res.status(500).json({ success: false, message: `Unable to insert short URL into databse: ${e}` });
+			throw new Error(`Unable to insert short URL into databse: ${e}`);
+		});
+	});
+});
+
+app.post('/api/links/:id/incrementClicks', function(req, res) {
+	if (!req.get('password')) {
+		return res.status(403).json({ success: false, message: 'No password provided' });
+	}
+
+	if (req.get('password') !== config.password) {
+		return res.status(401).json({ success: false, message: 'Password incorrect' });
+	}
+
+	knex('links').select('shortid', 'clicks').where({
+		shortid: req.params.id
+	}).then(function(data) {
+		if (data.length === 0) {
+			return res.status(404).json({ success: false, message: 'ID not found in database' });
+		}
+
+		knex('links').update({
+			clicks: data[0].clicks + 1
+		}).where({
+			shortid: req.params.id
+		}).then(function() {
+			res.json({ success: true });
+		}).catch(function(e) {
+			res.status(500).json({ success: false, message: `Failed to update click count: ${e}` });
+			throw new Error(`Failed to update click count: ${e}`);
+		});
+	}).catch(function(e) {
+		res.status(500).json({ success: false, message: `Unable to insert short URL into databse: ${e}` });
+		throw new Error(`Unable to insert short URL into databse: ${e}`);
 	});
 });
 

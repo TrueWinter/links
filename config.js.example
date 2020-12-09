@@ -5,7 +5,8 @@ var config = {
 	password: 'password', // The password used to add new short URLs,
 	port: '19282',
 	domain: 'short.url',
-	homeRedirect: 'https://example.com'
+	homeRedirect: 'https://example.com',
+	customLogic: ''
 };
 
 module.exports = config;
