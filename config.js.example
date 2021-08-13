@@ -6,7 +6,8 @@ var config = {
 	port: '19282',
 	domain: 'short.url',
 	homeRedirect: 'https://example.com',
-	customLogic: ''
+	customLogic: '',
+	sessionSecret: 'lkhasdlfaslkfdjsl'
 };
 
 module.exports = config;

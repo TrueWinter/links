@@ -1,12 +1,17 @@
 var express = require('express');
 var bodyParser = require('body-parser');
+var session = require('express-session');
 var crypto = require('crypto');
 var path = require('path');
-var morgan = require('morgan');
+var ejs = require('ejs');
 
 var app = express();
 
 var config = require('./config.js');
+
+function generateRandomness(length) {
+	return require('crypto').randomBytes(length / 2).toString('hex');
+}
 
 app.use(bodyParser.urlencoded({
 	extended: true
@@ -16,7 +21,62 @@ app.use(bodyParser.json());
 
 app.set('trust proxy', config.expressProxy);
 
-app.use(morgan('combined'));
+app.use(session({
+	secret: config.sessionSecret,
+	resave: false,
+	saveUninitialized: false
+}));
+
+app.set('view engine', 'ejs');
+
+function authMiddleware(req, res, next) {
+
+	if (req.session && req.session.loggedIn) {
+		return next();
+	}
+
+	res.redirect('/login');
+}
+
+app.use('/admin', authMiddleware);
+app.use('/admin/*', authMiddleware);
+
+app.get('/login', function(req, res) {
+	if (req.session && req.session.loggedIn) {
+		return res.redirect('/admin');
+	}
+
+	res.render('login', { error: null, success: null });
+});
+
+var users = config.users;
+
+app.post('/login', function(req, res) {
+	if (!req.body.password) {
+		return res.status(400).end('Password is required');
+	}
+
+	if (config.password === req.body.password) {
+		req.session.loggedIn = true;
+		req.session.csrf = generateRandomness(32);
+		res.redirect('/admin');
+	} else {
+		res.render('login', { error: 'Invalid password', success: null });
+	}
+});
+
+app.get('/logout', function(req, res) {
+	if (!(req.session && req.session.loggedIn)) {
+		return res.redirect('/login');
+	}
+
+	req.session.destroy(function(err) {
+		if (err) {
+			throw new Error(err);
+		}
+		res.redirect(`/login`);
+	});
+});
 
 var knex = require('knex')({
 	client: 'sqlite3',
@@ -50,26 +110,35 @@ if (config.customLogic) {
 	require(path.join(__dirname, config.customLogic))(app);
 }
 
-app.get('/new', function(req, res) {
-	res.sendFile(path.join(__dirname, 'new.html'));
+app.get('/admin/new', function(req, res) {
+	res.render('new', { error: null, success: null, csrf: req.session.csrf });
 });
 
-app.post('/new', function (req, res) {
-	if (!req.body.password) {
-		return res.status(403).end('No password provided');
+app.post('/admin/new', function (req, res) {
+	if (req.body.csrf !== req.session.csrf) {
+		return res.render('new', { error: 'Invalid security token', success: null, csrf: req.session.csrf });
 	}
-	if (req.body.password !== config.password) {
-		return res.status(401).end('Password incorrect');
-	}
-	//console.log(req.body.url);
+
 	if (!req.body.url) {
-		return res.status(400).json({ success: false, error: 'URL required' });
+		return res.render('new', { error: 'URL required', success: null, csrf: req.session.csrf });
 	}
 
 	var regex = new RegExp('^(http[s]?:\\/\\/(www\\.)?|ftp:\\/\\/(www\\.)?|www\\.){1}([0-9A-Za-z-\\.@:%_\+~#=]+)+((\\.[a-zA-Z]{2,3})+)(/(.)*)?(\\?(.)*)?'); // eslint-disable-line no-useless-escape
 
 	if (!regex.test(req.body.url)) {
-		return res.status(400).end('Not a valid URL');
+		return res.render('new', { error: 'Not a valid URL', success: null, csrf: req.session.csrf });
+	}
+
+	var urlSafe = new RegExp('^[a-zA-Z0-9_.-]+$');
+
+	if (req.body.shortid) {
+		if (!urlSafe.test(req.body.shortid)) {
+			return res.render('new', { error: 'You can use alpha-numeric characters and the following special characters: _.-', success: null, csrf: req.session.csrf });
+		}
+	}
+
+	if (req.body.shortid === 'admin') {
+		return res.render('new', { error: 'That\'s an internal link', success: null, csrf: req.session.csrf });
 	}
 
 	function randomValueHex () {
@@ -86,9 +155,9 @@ app.post('/new', function (req, res) {
 	}).then(function(data) {
 		if (data.length !== 0) {
 			if (req.body.shortid) {
-				return res.status(500).end('Short ID is not unique');
+				return res.render('new', { error: 'Short ID must be unique', success: null, csrf: req.session.csrf });
 			}
-			return res.status(500).end('Failed to generate unique short ID');
+			return res.render('new', { error: 'Failed to generate unique short ID', success: null, csrf: req.session.csrf });
 		}
 
 		knex('links').insert({
@@ -96,10 +165,79 @@ app.post('/new', function (req, res) {
 			url: req.body.url,
 			clicks: 0
 		}).then(function() {
-			res.end(`${req.body.url} shortened to https://${config.domain}/${req.body.shortid ? req.body.shortid : random}`);
+			return res.render('new', { error: null, success: `${req.body.url} shortened to https://${config.domain}/${req.body.shortid ? req.body.shortid : random}`, csrf: req.session.csrf });
 		}).catch(function(e) {
-			res.status(500).end(`Unable to insert short URL into databse: ${e}`);
+			res.render('new', { error: 'Unable to insert short URL into databse', success: null, csrf: req.session.csrf });
 			throw new Error(`Unable to insert short URL into databse: ${e}`);
+		});
+	});
+});
+
+app.get('/admin/edit/:id', function(req, res) {
+	knex('links').select('shortid', 'url').where({
+		shortid: req.params.id
+	}).then(function(data) {
+		if (data.length === 0) {
+			return res.status(400).end('ID not found in database');
+		}
+
+		res.render('edit', { data: data[0], error: null, success: null, csrf: req.session.csrf });
+	}).catch(function(e) {
+		res.status(500).end(`Error querying database: ${e}`);
+		throw new Error(`Error querying database: ${e}`);
+	});
+});
+
+app.post('/admin/edit/:id', function (req, res) {
+	if (req.body.csrf !== req.session.csrf) {
+		return res.status(400).end('Invalid security token');
+	}
+
+	knex('links').select('shortid', 'url').where({
+		shortid: req.params.id
+	}).then(function(data) {
+		if (data.length === 0) {
+			return res.status(400).end('ID not found in database');
+		}
+
+		var regex = new RegExp('^(http[s]?:\\/\\/(www\\.)?|ftp:\\/\\/(www\\.)?|www\\.){1}([0-9A-Za-z-\\.@:%_\+~#=]+)+((\\.[a-zA-Z]{2,3})+)(/(.)*)?(\\?(.)*)?'); // eslint-disable-line no-useless-escape
+
+		if (!regex.test(req.body.url)) {
+			return res.render('new', { error: 'Not a valid URL', success: null });
+		}
+
+		knex('links').update({
+			url: req.body.url
+		}).where({
+			shortid: req.params.id
+		}).then(function() {
+			res.redirect('/admin');
+		}).catch(function(e) {
+			res.status(500).end(`Error updating database: ${e}`);
+			throw new Error(`Error updating database: ${e}`);
+		});
+	});
+});
+
+app.post('/admin/delete/:id', function (req, res) {
+	if (req.body.csrf !== req.session.csrf) {
+		return res.status(400).end('Invalid security token');
+	}
+
+	knex('links').select('shortid', 'url').where({
+		shortid: req.params.id
+	}).then(function(data) {
+		if (data.length === 0) {
+			return res.status(400).end('ID not found in database');
+		}
+
+		knex('links').where({
+			shortid: req.params.id
+		}).delete().then(function() {
+			res.redirect('/admin');
+		}).catch(function(e) {
+			res.status(500).end(`Error updating database: ${e}`);
+			throw new Error(`Error updating database: ${e}`);
 		});
 	});
 });
@@ -117,48 +255,21 @@ app.get('/', function(req, res) {
 	res.redirect(config.homeRedirect);
 });
 
-app.get('/stats', function(req, res) {
-	res.sendFile(path.join(__dirname, 'stats.html'));
-});
-
-app.post('/stats', function(req, res) {
-	if (!(req.body.password || req.body.shortid)) {
-		return res.status(400).end('All fields are required');
-	}
-
-	if (req.body.password !== config.password) {
-		return res.status(403).end('Incorrect password');
-	}
-
-	if (req.body.shortid !== '*') {
-		knex('links').select('shortid', 'url', 'clicks').where({
-			shortid: req.body.shortid
-		}).then(function(data) {
-			if (data.length === 0) {
-				res.status(404).end('ID not found in database');
-			}
-
-			res.json(data[0]);
-		}).catch(function(e) {
-			res.status(500).end(`Error querying database: ${e}`);
-			throw new Error(`Error querying database: ${e}`);
-		});
-	} else {
-		knex('links').select('shortid', 'url', 'clicks').then(function(data) {
-			res.json(data);
-		}).catch(function(e) {
-			res.status(500).end(`Error querying database: ${e}`);
-			throw new Error(`Error querying database: ${e}`);
-		});
-	}
-
+app.get('/admin', function(req, res) {
+	knex('links').select('shortid', 'url', 'clicks').then(function(data) {
+		res.render('links', { error: null, success: null, data: data, csrf: req.session.csrf });
+	}).catch(function(e) {
+		res.status(500).end(`Error querying database: ${e}`);
+		throw new Error(`Error querying database: ${e}`);
+	});
 });
 
 app.get('/:id', function (req, res) {
 	if (req.params.id === 'favicon.ico' || req.params.id === 'robots.txt') return res.status(404).end();
 	//console.log(req.params.id);
+	var _id = req.params.id.endsWith('/') ? req.params.id.replace('/', '') : req.params.id;
 	knex('links').select('shortid', 'url', 'clicks').where({
-		shortid: req.params.id
+		shortid: _id
 	}).then(function(data) {
 		if (data.length === 0) {
 			return res.status(404).end('ID not found in database');

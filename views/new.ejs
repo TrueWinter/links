@@ -1,0 +1,11 @@
+<%- include('includes/head', { title: 'New Link', active: 'new' }) %>
+<form method="POST">
+	<input type="hidden" name="csrf" value="<%= csrf %>">
+	URL: <input type="url" autocomplete="off" class="form-control" name="url" required autocomplete="false" />
+	<br />
+	Short ID: <input type="text" autocomplete="off" class="form-control" name="shortid" autocomplete="false" />
+	<small>Leave blank for random. You will not be able to change this later.</small>
+	<br />
+	<button type="submit" class="btn btn-primary">Submit</button>
+</form>
+<%- include('includes/foot') %>

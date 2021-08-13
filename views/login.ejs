@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Login</title>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/4.6.0/darkly/bootstrap.min.css" rel="stylesheet">
+	</head>
+	<body>
+		<div class="container">
+			<div class="jumbotron">
+				<h1 class="text-center"><%= config.domain %> URL Shortener</h1>
+				<% if (error) { %>
+					<br>
+					<div class="alert alert-danger"><%= error %></div>
+				<% } %>
+				<% if (success) { %>
+					<br>
+					<div class="alert alert-success"><%= success %></div>
+				<% } %>
+				<form method="POST">
+					Password: <input type="password" class="form-control" name="password" required autocomplete="false"/>
+					<br />
+					<button type="submit" class="btn btn-primary">Submit</button>
+				</form>
+			</div>
+		</div>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.0/js/bootstrap.bundle.min.js"></script>
+	</body>
+</html> 
