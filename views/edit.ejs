@@ -2,6 +2,7 @@
 <form method="POST">
 	<input type="hidden" name="csrf" value="<%= csrf %>">
 	Short ID: <input type="text" autocomplete="off" class="form-control" name="shortid" autocomplete="false" disabled value="<%= data.shortid %>" />
+	<small>Short ID cannot be changed</small>
 	<br />
 	URL: <input type="url" autocomplete="off" class="form-control" name="url" required autocomplete="false" value="<%= data.url %>" />
 	<br />
