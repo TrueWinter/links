@@ -7,7 +7,11 @@ var config = {
 	domain: 'short.url',
 	homeRedirect: 'https://example.com',
 	customLogic: '',
-	sessionSecret: 'lkhasdlfaslkfdjsl'
+	sessionSecret: 'lkhasdlfaslkfdjsl',
+	prometheus: {
+		enabled: false,
+		port: '19292'
+	}
 };
 
 module.exports = config;

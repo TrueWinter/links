@@ -419,3 +419,8 @@ app.post('/api/links/:id/incrementClicks', function(req, res) {
 var listener = app.listen(config.port, function () {
 	console.log(`App is listening on port ${listener.address().port}`);
 });
+
+
+if (config.prometheus && config.prometheus.enabled) {
+	require('./prometheus.js').start(knex, config);
+}
