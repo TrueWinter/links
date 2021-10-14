@@ -103,6 +103,34 @@ knex.schema.hasTable('links').then(function(exists) {
 	throw new Error(`Unable to create table: ${e}`);
 });
 
+if (config.homeRedirect) {
+	knex('links').select('shortid', 'url', 'clicks').where({
+		shortid: '[home]'
+	}).then(function(data) {
+		if (data.length === 0) {
+			knex('links').insert({
+				shortid: '[home]',
+				url: config.homeRedirect,
+				clicks: 0
+			}).then(function() {
+				console.log('Added home redirect to database');
+			}).catch(function(e) {
+				throw new Error(`Unable to insert home redirect into databse: ${e}`);
+			});
+		} else if (data[0].url !== config.homeRedirect) {
+			knex('links').update({
+				url: config.homeRedirect
+			}).where({
+				shortid: '[home]'
+			}).then(function() {
+				console.log('Updated home redirect');
+			}).catch(function(e) {
+				throw new Error(`Failed to update home redirect: ${e}`);
+			});
+		}
+	});
+}
+
 app.locals.db = knex;
 app.locals.config = config;
 
@@ -174,6 +202,7 @@ app.post('/admin/new', function (req, res) {
 });
 
 app.get('/admin/edit/:id', function(req, res) {
+	if (req.params.id === '[home]') return res.status(400).end('The home redirect can only be updated from the config file');
 	knex('links').select('shortid', 'url').where({
 		shortid: req.params.id
 	}).then(function(data) {
@@ -189,6 +218,7 @@ app.get('/admin/edit/:id', function(req, res) {
 });
 
 app.post('/admin/edit/:id', function (req, res) {
+	if (req.params.id === '[home]') return res.status(400).end('The home redirect can only be updated from the config file');
 	if (req.body.csrf !== req.session.csrf) {
 		return res.status(400).end('Invalid security token');
 	}
@@ -220,6 +250,7 @@ app.post('/admin/edit/:id', function (req, res) {
 });
 
 app.post('/admin/delete/:id', function (req, res) {
+	if (req.params.id === '[home]') return res.status(400).end('The home redirect can only be updated from the config file');
 	if (req.body.csrf !== req.session.csrf) {
 		return res.status(400).end('Invalid security token');
 	}
@@ -252,7 +283,37 @@ app.get('/onlinecheck', function (req, res) {
 });
 
 app.get('/', function(req, res) {
-	res.redirect(config.homeRedirect);
+	if (!config.homeRedirect) return res.status(404).end('404 Not Found');
+
+	var _id = '[home]';
+	knex('links').select('shortid', 'url', 'clicks').where({
+		shortid: _id
+	}).then(function(data) {
+		if (data.length === 0) {
+			// In the unlikely event that it doesn't exist, add it
+			knex('links').insert({
+				shortid: _id,
+				url: config.homeRedirect,
+				clicks: 1
+			}).then(function() {
+				return res.redirect(config.homeRedirect);
+			}).catch(function(e) {
+				res.render('new', { error: 'Unable to insert short URL into databse', success: null, csrf: req.session.csrf });
+				throw new Error(`Unable to insert short URL into databse: ${e}`);
+			});
+		}
+
+		knex('links').update({
+			clicks: data[0].clicks + 1
+		}).where({
+			shortid: _id
+		}).then(function() {
+			res.redirect(data[0].url);
+		}).catch(function(e) {
+			res.status(500).end(`Failed to update click count: ${e}`);
+			throw new Error(`Failed to update click count: ${e}`);
+		});
+	});
 });
 
 app.get('/admin', function(req, res) {

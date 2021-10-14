@@ -15,8 +15,13 @@
 					<td><%= data[i].shortid %></td>
 					<td><%= data[i].url %></td>
 					<td><%= data[i].clicks %></td>
-					<td><a class="btn btn-primary" href="/admin/edit/<%= data[i].shortid %>">Edit</a></td>
-					<td><form method="POST" action="/admin/delete/<%= data[i].shortid %>"><input type="hidden" name="csrf" value="<%= csrf %>"><button type="submit" class="btn btn-danger">Delete</button></form></td>
+					<% if (data[i].shortid === '[home]') { %>
+						<td><a class="btn btn-primary disabled" href="javascript:void(0);">Edit</a></td>
+						<td><a class="btn btn-danger disabled" href="javascript:void(0);">Delete</a></form></td>
+					<% } else { %>
+						<td><a class="btn btn-primary" href="/admin/edit/<%= data[i].shortid %>">Edit</a></td>
+						<td><form method="POST" action="/admin/delete/<%= data[i].shortid %>"><input type="hidden" name="csrf" value="<%= csrf %>"><button type="submit" class="btn btn-danger">Delete</button></form></td>
+					<% } %>
 				</tr>
 			<% } %>
 		</tbody>
