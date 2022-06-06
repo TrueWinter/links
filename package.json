@@ -1,6 +1,6 @@
 {
   "name": "links",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "A simple NodeJS URL shortener",
   "main": "server.js",
   "dependencies": {
@@ -9,6 +9,7 @@
     "ejs": "^3.1.6",
     "express": "^4.17.1",
     "express-session": "^1.17.2",
+    "isbot": "^3.5.0",
     "knex": "^0.21.12",
     "morgan": "^1.10.0",
     "sqlite3": "^5.0.0"

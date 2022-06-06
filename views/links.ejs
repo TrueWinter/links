@@ -1,4 +1,5 @@
 <%- include('includes/head', { title: 'Links', active: 'links' }) %>
+<% var hasHomeRedirect = false; %>
 <h1>Links</h1>
 <div class="table-responsive">
 	<table class="table">
@@ -16,6 +17,7 @@
 					<td><%= data[i].url %></td>
 					<td><%= data[i].clicks %></td>
 					<% if (data[i].shortid === '[home]') { %>
+						<% hasHomeRedirect = true %>
 						<td><a class="btn btn-primary disabled" href="javascript:void(0);">Edit</a></td>
 						<td><a class="btn btn-danger disabled" href="javascript:void(0);">Delete</a></form></td>
 					<% } else { %>
@@ -23,8 +25,18 @@
 						<td><form method="POST" action="/admin/delete/<%= data[i].shortid %>"><input type="hidden" name="csrf" value="<%= csrf %>"><button type="submit" class="btn btn-danger">Delete</button></form></td>
 					<% } %>
 				</tr>
+				<% if (hasHomeRedirect) { %>
+					<tr>
+						<tr>
+							<td colspan="5">
+								<div class="alert alert-info">Important: The clicks for the home URL might not be 100% accurate as the internet is constantly being scanned.</div>
+							</td>
+						</tr>
+					</tr>
+				<% } %>
 			<% } %>
 		</tbody>
 	</table>
 </div>
+
 <%- include('includes/foot') %>

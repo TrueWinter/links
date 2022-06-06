@@ -4,6 +4,7 @@ var session = require('express-session');
 var crypto = require('crypto');
 var path = require('path');
 var ejs = require('ejs');
+var isbot = require('isbot');
 
 var app = express();
 
@@ -294,25 +295,31 @@ app.get('/', function(req, res) {
 			knex('links').insert({
 				shortid: _id,
 				url: config.homeRedirect,
-				clicks: 1
+				clicks: isbot(req.headers['user-agent']) ? 0 : 1
 			}).then(function() {
-				return res.redirect(config.homeRedirect);
+				res.redirect(config.homeRedirect);
 			}).catch(function(e) {
 				res.render('new', { error: 'Unable to insert short URL into databse', success: null, csrf: req.session.csrf });
 				throw new Error(`Unable to insert short URL into databse: ${e}`);
 			});
+
+			return;
 		}
 
-		knex('links').update({
-			clicks: data[0].clicks + 1
-		}).where({
-			shortid: _id
-		}).then(function() {
+		if (!isbot(req.headers['user-agent'])) {
+			knex('links').update({
+				clicks: data[0].clicks + 1
+			}).where({
+				shortid: _id
+			}).then(function() {
+				res.redirect(data[0].url);
+			}).catch(function(e) {
+				res.status(500).end(`Failed to update click count: ${e}`);
+				throw new Error(`Failed to update click count: ${e}`);
+			});
+		} else {
 			res.redirect(data[0].url);
-		}).catch(function(e) {
-			res.status(500).end(`Failed to update click count: ${e}`);
-			throw new Error(`Failed to update click count: ${e}`);
-		});
+		}
 	});
 });
 
@@ -336,18 +343,20 @@ app.get('/:id', function (req, res) {
 			return res.status(404).end('ID not found in database');
 		}
 
-		knex('links').update({
-			clicks: data[0].clicks + 1
-		}).where({
-			shortid: req.params.id
-		}).then(function() {
-			//res.end(data[0].url);
-			//res.json(data[0]);
+		if (!isbot(req.headers['user-agent'])) {
+			knex('links').update({
+				clicks: data[0].clicks + 1
+			}).where({
+				shortid: req.params.id
+			}).then(function() {
+				res.redirect(data[0].url);
+			}).catch(function(e) {
+				res.status(500).end(`Failed to update click count: ${e}`);
+				throw new Error(`Failed to update click count: ${e}`);
+			});
+		} else {
 			res.redirect(data[0].url);
-		}).catch(function(e) {
-			res.status(500).end(`Failed to update click count: ${e}`);
-			throw new Error(`Failed to update click count: ${e}`);
-		});
+		}
 	}).catch(function(e) {
 		res.status(500).end(`Error querying database: ${e}`);
 		throw new Error(`Error querying database: ${e}`);
